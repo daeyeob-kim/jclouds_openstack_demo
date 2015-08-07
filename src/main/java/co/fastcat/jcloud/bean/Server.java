@@ -9,10 +9,15 @@ public class Server {
 	private String status;
 	private String powerState;
 	private String keyPair;
+	private String floatingIp;
+	private String fixedIp;
 	
 	public Server(){}
+	
+	
 	public Server(String instanceName, String instanceId, String image,
-			String flavor, String status, String powerState, String keyPair) {
+			String flavor, String status, String powerState, String keyPair,
+			String floatingIp, String fixedIp) {
 		super();
 		this.instanceName = instanceName;
 		this.instanceId = instanceId;
@@ -21,8 +26,25 @@ public class Server {
 		this.status = status;
 		this.powerState = powerState;
 		this.keyPair = keyPair;
+		this.floatingIp = floatingIp;
+		this.fixedIp = fixedIp;
 	}
-	
+
+
+	public String getFloatingIp() {
+		return floatingIp;
+	}
+	public void setFloatingIp(String floatingIp) {
+		this.floatingIp = floatingIp;
+	}
+	public String getFixedIp() {
+		return fixedIp;
+	}
+	public void setFixedIp(String fixedIp) {
+		this.fixedIp = fixedIp;
+	}
+
+
 	public String getInstanceName() {
 		return instanceName;
 	}

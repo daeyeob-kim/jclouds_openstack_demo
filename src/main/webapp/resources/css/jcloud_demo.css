@@ -4,6 +4,9 @@ body {
   padding-bottom: 20px;
   font-family: 'Source Sans Pro', sans-serif;
 }
+.popup{
+	width:120px;
+}
 .panel-body{
 	padding : 5px;
 }

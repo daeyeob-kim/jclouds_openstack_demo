@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 import co.fastcat.jcloud.OpenstackAPI;
+import co.fastcat.jcloud.service.ServerListManager;
 
 /**
  * Handles requests for the application home page.
@@ -23,16 +24,15 @@ public class HomeController {
 	/**
 	 * Simply selects the home view to render by returning its name.
 	 */
-	@RequestMapping(value = "/home", method = RequestMethod.GET)
-	public ModelAndView home(Locale locale, Model model) {
+	@RequestMapping(value = "/", method = RequestMethod.GET)
+	public ModelAndView home() {
 		ModelAndView mav = new ModelAndView();
 		
-		/*OpenstackAPI testControl = new OpenstackAPI("http://10.0.1.65:5000/v2.0/", "openstack-nova", "admin", "admin", "3f4a0c469aa9451d");
-		*//*ServerListManager serverListManager=new ServerListManager(openstackAPI);
+		OpenstackAPI openstackAPI = new OpenstackAPI("http://10.0.1.65:5000/v2.0/", "openstack-nova", "admin", "admin", "3f4a0c469aa9451d");
+		ServerListManager serverListManager=new ServerListManager(openstackAPI);
 
 		mav.addObject("list", serverListManager.getInstancesList());
-	*/	mav.setViewName("home");
+		mav.setViewName("home");
 		return mav;
 	}
-	
 }

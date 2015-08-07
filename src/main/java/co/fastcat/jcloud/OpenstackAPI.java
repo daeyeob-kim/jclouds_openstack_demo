@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 작성자: 전제현, 김대엽
  * 작성일: 2015. 08. 05 ~
  * OpenstackAPI
@@ -13,6 +13,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Closeables;
 import com.google.inject.Module;
 import com.google.common.base.Optional;
+
 import org.jclouds.ContextBuilder;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.openstack.nova.v2_0.NovaApi;
@@ -22,6 +23,8 @@ import org.jclouds.openstack.nova.v2_0.domain.Server;
 import org.jclouds.openstack.nova.v2_0.domain.ServerCreated;
 import org.jclouds.openstack.nova.v2_0.domain.regionscoped.RegionAndId;
 import org.jclouds.openstack.nova.v2_0.extensions.FloatingIPApi;
+import org.jclouds.openstack.nova.v2_0.features.FlavorApi;
+import org.jclouds.openstack.nova.v2_0.features.ImageApi;
 import org.jclouds.openstack.nova.v2_0.features.ServerApi;
 import org.jclouds.openstack.nova.v2_0.options.CreateServerOptions;
 import org.slf4j.Logger;
@@ -34,12 +37,17 @@ import java.util.*;
 public class OpenstackAPI implements Closeable {
 
     private static Logger logger = LoggerFactory.getLogger(OpenstackAPI.class);
-    private final NovaApi novaApi;
-    private final Set<String> regions;
+    private NovaApi novaApi;
+    private Set<String> regions;
 
+    public static void main(String[] args){
+    	OpenstackAPI api=new OpenstackAPI("http://10.0.1.65:5000/v2.0/", "openstack-nova", "admin", "admin", "3f4a0c469aa9451d");
+    }
     /*
      * OpenstackAPI 생성자
      * */
+    public OpenstackAPI(){
+    }
     public OpenstackAPI(String getUri, String getProvider, String getProject, String getUser, String credential) {
         String identity = getProject + ":" + getUser;
         Iterable<Module> modules = ImmutableSet.<Module>of(new SLF4JLoggingModule());
@@ -124,27 +132,50 @@ public class OpenstackAPI implements Closeable {
 
         return this;
     }
-
     /*
-    * 인스턴스 ID를 받아 해당 인스턴스를 끔 (Shut Down)
-    * */
-    public OpenstackAPI stopInstance(String instanceId) {
+     * 인스턴스 ID를 받아 해당 인스턴스를 시작 
+     * */
+     public boolean startInstance(String instanceId) {
 
-        logger.debug("------------------------------- Start stopInstance / 인스턴스를 끔 (Shut Down) 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+         logger.debug("------------------------------- Start stopInstance / 인스턴스를 시작하기 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
-        for (String region : regions) {
-            ServerApi serverApi = novaApi.getServerApi(region);
-            try {
-                serverApi.stop(instanceId);
-            } catch (Exception e) {
-                logger.error(e.toString());
-            }
-        }
+         for (String region : regions) {
+             ServerApi serverApi = novaApi.getServerApi(region);
+             try {
+                 serverApi.start(instanceId);
+                 return true;
+             } catch (Exception e) {
+                 logger.error(e.toString());
+                 return false;
+             }
+         }
 
-        logger.debug("------------------------------- End stopInstance / 인스턴스를 끔 (Shut Down) 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+         logger.debug("------------------------------- End stopInstance / 인스턴스를 시작하기  끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
-        return this;
-    }
+         return false;
+     }
+    /*
+     * 인스턴스 ID를 받아 해당 인스턴스를 끔 (Shut Down)
+     * */
+     public boolean stopInstance(String instanceId) {
+
+         logger.debug("------------------------------- Start stopInstance / 인스턴스를 끔 (Shut Down) 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+
+         for (String region : regions) {
+             ServerApi serverApi = novaApi.getServerApi(region);
+             try {
+                 serverApi.stop(instanceId);
+                 return true;
+             } catch (Exception e) {
+                 logger.error(e.toString());
+                 return false;
+             }
+         }
+
+         logger.debug("------------------------------- End stopInstance / 인스턴스를 끔 (Shut Down) 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+
+         return false;
+     }
 
     /*
     * 인스턴스 ID를 입력, 해당 인스턴스의 객체를 리턴 (Server 객체 return)
@@ -171,7 +202,7 @@ public class OpenstackAPI implements Closeable {
    /*
    * 인스턴스 ID를 받아 해당 인스턴스를 종료 (terminate)
    * */
-    public OpenstackAPI terminateInstance(String instanceId) {
+    public boolean terminateInstance(String instanceId) {
 
         logger.debug("------------------------------- Start terminateInstance / 인스턴스를 종료 시작 (terminate) / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
@@ -180,17 +211,19 @@ public class OpenstackAPI implements Closeable {
             ServerApi serverApi = novaApi.getServerApi(region);
             try {
                 serverApi.delete(instanceId);
+                return true;
             } catch (Exception e) {
                 logger.error(e.toString());
                 logger.debug("------------------------------- End terminateInstance / 인스턴스를 종료 끝 (terminate) / Error / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+                return false;
             }
         }
 
         logger.debug("------------------------------- End terminateInstance / 인스턴스를 종료 (terminate) 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
-        return this;
+        return false;
     }
-
+    
     /*
     * 인스턴스 생성 (생성 후 생성된 인스턴스 ID를 리턴한다.)
     * (REGION_NAME, 인스턴스 네임, 이미지 아이디, Flavor 아이디, 네트워크 아이디, 세팅할 관리자 계정 비밀번호, 키페어)
@@ -223,7 +256,7 @@ public class OpenstackAPI implements Closeable {
     /*
     * 인스턴스 서버 객체를 받아 할당된 Floating IP를 출력
     * */
-    public OpenstackAPI loadFloatingIpsForInstance(Server instance) {
+    public String loadFloatingIpsForInstance(Server instance) {
 
         logger.debug("------------------------------- Start loadFloatingIpsForInstance / 할당된 Floating IP 출력 시작 / [ 인스턴스명: {} ] -------------------------------", instance.getName());
 
@@ -240,8 +273,11 @@ public class OpenstackAPI implements Closeable {
                 Iterator iterator = tmp.iterator();
                 while (iterator.hasNext()) {
                     Object element = iterator.next();
-                    if(fromColonStringToMap("FloatingIP",element.toString()).get("ip").toString() != null)
+                    if(fromColonStringToMap("FloatingIP",element.toString()).get("ip").toString() != null){
                         logger.debug("Floating IP: {}", fromColonStringToMap("FloatingIP", element.toString()).get("ip").toString());
+                    return fromColonStringToMap("FloatingIP", element.toString()).get("ip").toString();
+                    		}
+                    
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -250,13 +286,38 @@ public class OpenstackAPI implements Closeable {
 
         logger.debug("------------------------------- End loadFloatingIpsForInstance / 할당된 Floating IP 출력 끝 / [ 인스턴스명: {} ] -------------------------------", instance.getName());
 
-        return this;
+        return null;
     }
 
+    public String getImageName(String imageId){
+    	for (String region : regions) {
+
+            ImageApi imageApi = novaApi.getImageApi(region);
+            try {
+            	return imageApi.get(imageId).getName();
+            } catch (Exception e) {
+                logger.error(e.toString());
+            }
+        }
+		return null;    	
+    }
+
+    public String getFlavorName(String flavorId){
+    	for (String region : regions) {
+
+    		FlavorApi flavorApi = novaApi.getFlavorApi(region);
+            try {
+            	return flavorApi.get(flavorId).getName();
+            } catch (Exception e) {
+                logger.error(e.toString());
+            }
+        }
+		return null;    	
+    }
     /*
     * 인스턴스 ID를 입력하면, 할당된 Floating IP를 출력
     * */
-    public OpenstackAPI loadFloatingIpsForInstance(String instanceId) {
+    public String loadFloatingIpsForInstance(String instanceId) {
 
         logger.debug("------------------------------- Start loadFloatingIpsForInstance / 할당된 Floating IP 출력 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
@@ -271,8 +332,10 @@ public class OpenstackAPI implements Closeable {
                 Iterator iterator = tmp.iterator();
                 while (iterator.hasNext()) {
                     Object element = iterator.next();
-                    if(fromColonStringToMap("FloatingIP",element.toString()).get("ip").toString() != null)
+                    if(fromColonStringToMap("FloatingIP",element.toString()).get("ip").toString() != null){
                         logger.debug("Floating IP: {}", fromColonStringToMap("FloatingIP", element.toString()).get("ip").toString());
+                        return fromColonStringToMap("FloatingIP", element.toString()).get("ip").toString();
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -281,9 +344,38 @@ public class OpenstackAPI implements Closeable {
 
         logger.debug("------------------------------- End loadFloatingIpsForInstance / 할당된 Floating IP 출력 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
-        return this;
+        return null;
     }
+    
+    public String loadFixedIpsForInstance(String instanceId) {
 
+        logger.debug("------------------------------- Start loadFixedIpsForInstance / 할당된 Fixed IP 출력 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+
+        for (String region : regions) {
+
+            LoadFloatingIpsForInstance loadFloatingIpsForInstance = new LoadFloatingIpsForInstance(novaApi);
+            RegionAndId regionAndId = null;
+            regionAndId = regionAndId.fromSlashEncoded(region+"/"+instanceId);
+
+            try {
+                Iterable tmp = loadFloatingIpsForInstance.load(regionAndId);
+                Iterator iterator = tmp.iterator();
+                while (iterator.hasNext()) {
+                    Object element = iterator.next();
+                    if(fromColonStringToMap("FloatingIP",element.toString()).get("ip").toString() != null){
+                        logger.debug("Floating IP: {}", fromColonStringToMap("FloatingIP", element.toString()).get("fixedIp").toString());
+                        return fromColonStringToMap("FloatingIP", element.toString()).get("fixedIp").toString();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        logger.debug("------------------------------- End loadFixedIpsForInstance / 할당된 Fixed IP 출력 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+
+        return null;
+    }
 
     /*
     * CustomString 파서..
@@ -306,10 +398,10 @@ public class OpenstackAPI implements Closeable {
     /*
     * 고정 IP가 지정되지 않은 인스턴스에 Floating IP를 설정한다.
     * */
-    public OpenstackAPI addFloatingIp(String instanceId) throws Exception {
+    public boolean addFloatingIp(String instanceId) throws Exception {
 
         logger.debug("------------------------------- Start addFloatingIp / 인스턴스에 Floating IP를 설정 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
-
+        FloatingIP floatingIP = null;
         for (String region : regions) {
             Optional<? extends FloatingIPApi> apiOption = novaApi.getFloatingIPApi(region);
             if (!apiOption.isPresent())
@@ -317,7 +409,7 @@ public class OpenstackAPI implements Closeable {
             FloatingIPApi api = apiOption.get();
             ServerApi serverApi = this.novaApi.getServerApi(region);
             Server server = serverApi.get(instanceId);
-            FloatingIP floatingIP = null;
+            
             for (int instance_count = 0, instance_list_size = api.list().size(); instance_count < instance_list_size; instance_count++) {
                 if (isFixedIPNull(api.list().get(instance_count).toString()) == true) {
                     floatingIP = api.list().get(instance_count);
@@ -335,7 +427,35 @@ public class OpenstackAPI implements Closeable {
 
         logger.debug("------------------------------- End addFloatingIp / 인스턴스에 Floating IP를 설정 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
 
-        return this;
+        if(floatingIP!=null)
+        	return true;
+        return false;
+    }
+
+    /*
+    * 인스턴스에 할당된 Floating IP를 해제한다.
+    * */
+    
+    public boolean removeFloatingIp(String instanceId) throws Exception {
+
+    	try{
+            logger.debug("------------------------------- Start addFloatingIp / 인스턴스에 Floating IP를 해제 시작 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+            for (String region : regions) {
+                Optional<? extends FloatingIPApi> apiOption = novaApi.getFloatingIPApi(region);
+                if (!apiOption.isPresent())
+                    continue;
+                FloatingIPApi api = apiOption.get();
+                ServerApi serverApi = this.novaApi.getServerApi(region);
+                Server server = serverApi.get(instanceId);
+                
+                api.removeFromServer(loadFloatingIpsForInstance(instanceId), instanceId);
+            }
+            logger.debug("------------------------------- End addFloatingIp / 인스턴스에 Floating IP를 해제 끝 / [ 인스턴스 ID: {} ] -------------------------------", instanceId);
+
+            return true;    		
+    	}catch(Exception e){
+    		return false;    	
+    	}
     }
 
     /*
@@ -355,6 +475,7 @@ public class OpenstackAPI implements Closeable {
 
         return false;
     }
+    
 
     //CustomString 파서..
     //FloatingIP{id=62c10231-126d-40db-aca3-989ab76e6a40, ip=10.0.1.183, fixedIp=10.0.0.25, instanceId=ef9484e8-99e2-4878-b1e9-0785fadc5415, pool=public2}
